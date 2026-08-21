@@ -1,0 +1,14 @@
+{
+  "name": "expert-market",
+  "private": true,
+  "version": "0.1.0",
+  "description": "开放式专家与专家团编排框架",
+  "scripts": {
+    "dev": "pnpm --filter @expert/market dev",
+    "build": "pnpm -r build",
+    "test": "pnpm --filter @expert/core test",
+    "typecheck": "pnpm -r typecheck",
+    "expert:install": "node --experimental-strip-types apps/market/scripts/install.mjs"
+  },
+  "packageManager": "pnpm@10.14.0"
+}

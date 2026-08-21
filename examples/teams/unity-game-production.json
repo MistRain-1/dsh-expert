@@ -1,0 +1,34 @@
+{
+  "apiVersion": "expert/v1",
+  "kind": "team",
+  "metadata": {
+    "id": "team.unity-game-production",
+    "name": "Unity Game Production Team",
+    "version": "1.0.0",
+    "description": "从目标和核心玩法出发，协作产出 Unity 游戏的整体制作、交付与发布路线。",
+    "author": "Expert Market",
+    "tags": ["Unity", "游戏制作", "协作"]
+  },
+  "spec": {
+    "members": [
+      { "id": "producer", "expert": "expert.unity-game-producer", "role": "制作统筹" },
+      { "id": "designer", "expert": "expert.unity-game-designer", "role": "游戏设计" },
+      { "id": "architect", "expert": "expert.unity-project-architect", "role": "技术架构" },
+      { "id": "assets", "expert": "expert.unity-asset-pipeline-engineer", "role": "内容与资产" },
+      { "id": "performance", "expert": "expert.unity-performance-engineer", "role": "性能预算" },
+      { "id": "qa", "expert": "expert.unity-qa-engineer", "role": "质量验收" },
+      { "id": "release", "expert": "expert.unity-build-release-engineer", "role": "构建发布" },
+      { "id": "director", "expert": "expert.unity-game-producer", "role": "整体方案" }
+    ],
+    "steps": [
+      { "member": "producer" },
+      { "member": "designer", "dependsOn": ["producer"] },
+      { "member": "architect", "dependsOn": ["producer"] },
+      { "member": "assets", "dependsOn": ["producer", "designer"] },
+      { "member": "performance", "dependsOn": ["architect"] },
+      { "member": "qa", "dependsOn": ["designer", "architect", "assets", "performance"] },
+      { "member": "release", "dependsOn": ["qa", "architect"] },
+      { "member": "director", "dependsOn": ["producer", "designer", "architect", "assets", "performance", "qa", "release"] }
+    ]
+  }
+}

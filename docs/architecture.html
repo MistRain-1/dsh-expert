@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expert Market / 架构方案图</title>
+  <style>
+    :root { color-scheme: light; --ink: #202720; --muted: #74796f; --line: #d9ddd4; --paper: #f4f3ed; --panel: #fffefa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
+    header { padding: 32px max(28px, calc((100vw - 1180px) / 2)); border-bottom: 1px solid var(--line); background: #fbfaf5; }
+    header small { color: var(--muted); font: 11px ui-monospace, monospace; letter-spacing: .12em; }
+    h1 { margin: 12px 0 8px; font: 700 34px Georgia, serif; letter-spacing: -.04em; }
+    header p { max-width: 650px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    main { width: min(1180px, calc(100% - 56px)); margin: 30px auto 70px; }
+    .canvas-shell { overflow: hidden; border: 1px solid var(--line); background: #e9eee4; box-shadow: 8px 8px 0 #dce4d5; }
+    .canvas-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid var(--line); background: #fbfaf5; }
+    .canvas-bar strong { font-size: 12px; }
+    .canvas-bar span { color: var(--muted); font: 10px ui-monospace, monospace; }
+    canvas { display: block; width: 100%; height: 500px; cursor: grab; }
+    canvas.dragging { cursor: grabbing; }
+    .data-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 18px; margin-top: 30px; }
+    section { padding: 21px; border: 1px solid var(--line); background: var(--panel); }
+    h2 { margin: 0 0 9px; font-size: 17px; }
+    section > p { margin: 0 0 17px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+    pre { overflow: auto; margin: 0; padding: 15px; color: #455242; background: #f0f4eb; font: 11px/1.75 ui-monospace, monospace; }
+    .rules { display: grid; gap: 10px; }
+    .rule { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 11px 0; border-bottom: 1px solid #ecebe4; }
+    .rule:last-child { border: 0; }
+    .rule b { width: 25px; height: 25px; display: grid; place-items: center; color: #34502c; background: #dff1ce; font: 11px ui-monospace, monospace; }
+    .rule strong { display: block; margin-bottom: 3px; font-size: 11px; }
+    .rule span { color: var(--muted); font-size: 10px; line-height: 1.6; }
+    @media (max-width: 820px) { .data-grid { grid-template-columns: 1fr; } main { width: calc(100% - 30px); } header { padding: 25px 15px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <small>EXPERT MARKET / DESIGN NOTE 001</small>
+    <h1>专家团不是一组提示词，而是一张可验证的协作图。</h1>
+    <p>画布中的节点可以拖动，空白处拖动可以平移，滚轮可以缩放。流程图只保留跨模块的关键边界：专家团声明候选图，统筹 Agent 按任务做运行时选择，Team Runner 负责校验和执行。</p>
+  </header>
+  <main>
+    <div class="canvas-shell">
+      <div class="canvas-bar"><strong>动态调度运行时数据流</strong><span>拖动节点 · 拖动画布 · 滚轮缩放</span></div>
+      <canvas id="diagram" aria-label="专家市场架构流程图"></canvas>
+    </div>
+    <div class="data-grid">
+      <section>
+        <h2>核心数据结构</h2>
+        <p>字段只保留跨生命周期或跨模块需要的状态；交接结果直接复用步骤输出。</p>
+        <pre>// 专家：描述能力，不携带密钥或执行代码
+type ExpertManifest = {
+  apiVersion: "expert/v1"
+  kind: "expert"
+  metadata: {
+    id: string              // 稳定引用与版本入口
+    version: string         // 发布版本
+    author: string          // 归属与审核主体
+    tags: string[]          // 市场检索
+  }
+  spec: {
+    instructions: string   // 专家职责与边界
+    capabilities: string[] // 可发现能力
+  }
+}
+
+// 专家团：成员声明角色，步骤声明依赖
+  type TeamManifest = {
+   metadata: ExpertMetadata
+   spec: {
+     members: { id, expert, role }[] // 候选专家与角色
+     steps: { member, dependsOn? }[] // 安全依赖边界，不代表必调
+   }
+ }
+
+ // 统筹 Agent 每轮看到的上下文
+ type TeamCoordinationInput = {
+   task: string
+   candidates: TeamCandidate[]
+   completed: Record<memberId, ExpertResult>
+   dispatched: memberId[]
+   skipped: memberId[]
+   availableMembers: memberId[]
+ }
+
+ // 统筹 Agent 每轮的结构化决定
+ type TeamDispatchPlan = {
+   calls: { member, task }[]
+   skipMembers: memberId[]
+   rationale: string
+ }
+
+ // 运行时交接：真实结果与跳过缺口分开
+ type ExpertExecutionInput = {
+   task: string
+   assignment: string
+   member: TeamMember
+   expert: ExpertManifest
+   completed: Record&lt;memberId, ExpertResult&gt;
+   skipped: memberId[]
+ }</pre>
+      </section>
+      <section>
+        <h2>边界与失败模式</h2>
+        <p>把“能不能发布”和“能不能执行”分成两次判断，避免市场成为不受控的代码执行入口。</p>
+        <div class="rules">
+          <div class="rule"><b>01</b><div><strong>上传者提交声明</strong><span>默认只接受 manifest；缺少 ID、版本、职责或能力时拒绝。</span></div></div>
+          <div class="rule"><b>02</b><div><strong>统筹 Agent 选择本轮</strong><span>统筹 Agent 查看候选职责、任务和已完成结果，决定调用哪些专家、分配什么子任务以及跳过哪些成员。</span></div></div>
+          <div class="rule"><b>03</b><div><strong>Runner 校验调度决定</strong><span>运行器拒绝越权成员、重复决定和未收口依赖；同一轮调用可以并行，下一轮等待结果后再规划。</span></div></div>
+          <div class="rule"><b>04</b><div><strong>宿主注入执行能力</strong><span>模型、工具、密钥、网络和文件权限由宿主执行器决定；跳过成员没有结果，缺口必须显式传递。</span></div></div>
+          <div class="rule"><b>05</b><div><strong>最终结果取声明末步</strong><span>最后一个步骤是最终集成步骤，不能跳过；剩余候选在最终结果生成后不再调用。</span></div></div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script>
+    const canvas = document.querySelector('#diagram');
+    const context = canvas.getContext('2d');
+    const nodes = [
+      { id: 'market', title: '专家市场', note: '发现 / 发布 / 审核', x: 40, y: 170, w: 180, h: 82, color: '#dff1ce' },
+      { id: 'manifest', title: 'Expert Manifest', note: '声明式专家包', x: 280, y: 70, w: 190, h: 82, color: '#f8dfd6' },
+      { id: 'team', title: 'Team Manifest', note: '候选成员 + 依赖边界', x: 280, y: 270, w: 190, h: 82, color: '#dce7f8' },
+      { id: 'coordinator', title: '统筹 Agent', note: '选择 / 分派 / 跳过', x: 525, y: 170, w: 200, h: 82, color: '#f3e5c4' },
+      { id: 'runner', title: 'Team Runner', note: '校验 / 并行 / 交接', x: 780, y: 170, w: 190, h: 82, color: '#e7e0f0' },
+      { id: 'host', title: 'Host Executor', note: '模型 / 工具 / 权限', x: 1025, y: 170, w: 190, h: 82, color: '#1f2a22', dark: true },
+    ];
+    const links = [['market', 'manifest'], ['market', 'team'], ['manifest', 'coordinator'], ['team', 'coordinator'], ['coordinator', 'runner'], ['runner', 'host']];
+    let scale = 1, offsetX = 0, offsetY = 0, dragging = null, panning = false, last = { x: 0, y: 0 };
+    function resize() { const ratio = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * ratio; canvas.height = canvas.clientHeight * ratio; context.setTransform(ratio, 0, 0, ratio, 0, 0); draw(); }
+    function point(event) { const rect = canvas.getBoundingClientRect(); return { x: (event.clientX - rect.left - offsetX) / scale, y: (event.clientY - rect.top - offsetY) / scale }; }
+    function draw() {
+      const width = canvas.clientWidth, height = canvas.clientHeight;
+      context.clearRect(0, 0, width, height); context.fillStyle = '#e9eee4'; context.fillRect(0, 0, width, height);
+      context.save(); context.translate(offsetX, offsetY); context.scale(scale, scale);
+      context.strokeStyle = '#c2cec0'; context.lineWidth = 1;
+      for (let x = -100; x < 1300; x += 24) { context.beginPath(); context.moveTo(x, -100); context.lineTo(x, 700); context.stroke(); }
+      for (let y = -100; y < 700; y += 24) { context.beginPath(); context.moveTo(-100, y); context.lineTo(1300, y); context.stroke(); }
+      const byId = Object.fromEntries(nodes.map(node => [node.id, node]));
+      context.lineWidth = 2; context.strokeStyle = '#82937f'; context.fillStyle = '#82937f';
+      links.forEach(([fromId, toId]) => { const from = byId[fromId], to = byId[toId]; const x1 = from.x + from.w, y1 = from.y + from.h / 2, x2 = to.x, y2 = to.y + to.h / 2; context.beginPath(); context.moveTo(x1, y1); context.bezierCurveTo(x1 + 55, y1, x2 - 55, y2, x2, y2); context.stroke(); context.beginPath(); context.moveTo(x2, y2); context.lineTo(x2 - 9, y2 - 5); context.lineTo(x2 - 9, y2 + 5); context.closePath(); context.fill(); });
+      nodes.forEach(node => { context.fillStyle = node.color; context.strokeStyle = node.dark ? '#1f2a22' : '#b5c3ae'; context.lineWidth = 1; context.fillRect(node.x, node.y, node.w, node.h); context.strokeRect(node.x, node.y, node.w, node.h); context.fillStyle = node.dark ? '#f0f6ec' : '#243025'; context.font = '600 14px Segoe UI'; context.fillText(node.title, node.x + 16, node.y + 32); context.fillStyle = node.dark ? '#a5b4a4' : '#748073'; context.font = '11px ui-monospace, monospace'; context.fillText(node.note, node.x + 16, node.y + 55); });
+      context.restore();
+    }
+    canvas.addEventListener('pointerdown', event => { const p = point(event); dragging = [...nodes].reverse().find(node => p.x >= node.x && p.x <= node.x + node.w && p.y >= node.y && p.y <= node.y + node.h); panning = !dragging; last = { x: event.clientX, y: event.clientY }; canvas.classList.add('dragging'); canvas.setPointerCapture(event.pointerId); });
+    canvas.addEventListener('pointermove', event => { const dx = event.clientX - last.x, dy = event.clientY - last.y; last = { x: event.clientX, y: event.clientY }; if (dragging) { dragging.x += dx / scale; dragging.y += dy / scale; } else if (panning) { offsetX += dx; offsetY += dy; } draw(); });
+    canvas.addEventListener('pointerup', () => { dragging = null; panning = false; canvas.classList.remove('dragging'); });
+    canvas.addEventListener('wheel', event => { event.preventDefault(); const before = point(event); scale = Math.min(1.8, Math.max(.65, scale * (event.deltaY > 0 ? .92 : 1.08))); const after = point(event); offsetX += (after.x - before.x) * scale; offsetY += (after.y - before.y) * scale; draw(); }, { passive: false });
+    window.addEventListener('resize', resize); resize();
+  </script>
+</body>
+</html>

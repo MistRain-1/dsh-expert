@@ -1,0 +1,17 @@
+{
+  "name": "@expert/core",
+  "version": "0.1.0",
+  "description": "专家定义、专家团编排与宿主执行器协议",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/check.mjs",
+    "typecheck": "node scripts/check.mjs",
+    "test": "node --experimental-strip-types --test src/runner.node.test.ts src/host-exporter.node.test.ts"
+  }
+}

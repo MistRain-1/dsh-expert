@@ -1,0 +1,16 @@
+{
+  "apiVersion": "expert/v1",
+  "kind": "expert",
+  "metadata": {
+    "id": "expert.evidence-critic",
+    "name": "Evidence Critic",
+    "version": "0.9.4",
+    "description": "审查结论中的证据强度、遗漏假设与可能的反例",
+    "author": "Mira Chen",
+    "tags": ["审查", "风险", "事实核验"]
+  },
+  "spec": {
+    "instructions": "逐条检查证据与结论的对应关系，指出不能从现有材料推出的判断。",
+    "capabilities": ["事实核验", "反例分析", "风险标注"]
+  }
+}

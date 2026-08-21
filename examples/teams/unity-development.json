@@ -1,0 +1,36 @@
+{
+  "apiVersion": "expert/v1",
+  "kind": "team",
+  "metadata": {
+    "id": "team.unity-development",
+    "name": "Unity Development Team",
+    "version": "1.0.0",
+    "description": "架构、Gameplay、Editor、数据、资产、性能和 QA 协作完成 Unity 开发任务。",
+    "author": "Expert Market",
+    "tags": ["Unity", "开发", "协作"]
+  },
+  "spec": {
+    "members": [
+      { "id": "architect", "expert": "expert.unity-project-architect", "role": "项目架构" },
+      { "id": "gameplay", "expert": "expert.unity-gameplay-engineer", "role": "Gameplay" },
+      { "id": "editor", "expert": "expert.unity-editor-tools-engineer", "role": "Editor 工具" },
+      { "id": "data", "expert": "expert.unity-data-engineer", "role": "数据配置" },
+      { "id": "assets", "expert": "expert.unity-asset-pipeline-engineer", "role": "资产管线" },
+      { "id": "physics", "expert": "expert.unity-physics-ai-engineer", "role": "物理与导航" },
+      { "id": "performance", "expert": "expert.unity-performance-engineer", "role": "性能" },
+      { "id": "qa", "expert": "expert.unity-qa-engineer", "role": "QA" },
+      { "id": "integrator", "expert": "expert.unity-project-architect", "role": "最终集成" }
+    ],
+    "steps": [
+      { "member": "architect" },
+      { "member": "gameplay", "dependsOn": ["architect"] },
+      { "member": "editor", "dependsOn": ["architect"] },
+      { "member": "data", "dependsOn": ["architect"] },
+      { "member": "assets", "dependsOn": ["architect"] },
+      { "member": "physics", "dependsOn": ["architect"] },
+      { "member": "performance", "dependsOn": ["architect"] },
+      { "member": "qa", "dependsOn": ["gameplay", "editor", "data", "assets", "physics", "performance"] },
+      { "member": "integrator", "dependsOn": ["architect", "qa"] }
+    ]
+  }
+}

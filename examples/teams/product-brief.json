@@ -1,0 +1,22 @@
+{
+  "apiVersion": "expert/v1",
+  "kind": "team",
+  "metadata": {
+    "id": "team.product-brief",
+    "name": "Product Brief Team",
+    "version": "1.4.0",
+    "description": "研究、审查、编辑三段协作",
+    "author": "Open Atlas",
+    "tags": ["产品", "研究", "协作"]
+  },
+  "spec": {
+    "members": [
+      { "id": "scout", "expert": "expert.evidence-researcher", "role": "研究员" },
+      { "id": "critic", "expert": "expert.evidence-critic", "role": "审查员" }
+    ],
+    "steps": [
+      { "member": "scout" },
+      { "member": "critic", "dependsOn": ["scout"] }
+    ]
+  }
+}
