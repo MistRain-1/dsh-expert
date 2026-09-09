@@ -43,6 +43,10 @@ const team: TeamManifest = {
   spec: {
     members: [{ id: "architect", expert: architect.metadata.id, role: "架构师" }],
     steps: [{ member: "architect" }],
+    discovery: {
+      enabled: true,
+      excludePrefixes: ["team-"],
+    },
   },
 };
 
@@ -58,9 +62,23 @@ test("专家团 Skill 内嵌成员职责和依赖顺序", () => {
   assert.match(skill, /# Unity Development Team/);
   assert.match(skill, /架构师/);
   assert.match(skill, /统筹 Agent 分发协议/);
+  assert.match(skill, /语言 \/ Language/);
+  assert.match(skill, /Prefer the active DSH UI or session locale/);
+  assert.match(skill, /Coordinator Dispatch Protocol/);
   assert.match(skill, /skipMembers/);
   assert.match(skill, /calls/);
   assert.match(skill, /最终输出取最后一个步骤的结果/);
+  assert.match(skill, /Use the final step's result as the team output/);
+  assert.match(skill, /运行时专家发现 \/ Runtime Expert Discovery/);
+  assert.match(skill, /制定调用计划之前，必须使用宿主提供的只读文件工具/);
+  assert.match(skill, /所有已安装 Skill 都必须进入初始清单/);
+  assert.match(skill, /current-project copy overrides the global copy/);
+  assert.match(skill, /skill:<frontmatter name>/);
+  assert.match(skill, /Only when the host explicitly denies file access/);
+  assert.match(skill, /实际调用提示词载荷/);
+  assert.match(skill, /actual invocation prompt payload/);
+  assert.match(skill, /你负责设计 Unity 项目边界。/);
+  assert.match(skill, /Frontmatter or a description is selection metadata only/);
 });
 
 test("安装器默认拒绝覆盖，force 才允许更新", async () => {

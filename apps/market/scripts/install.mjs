@@ -88,7 +88,7 @@ async function main() {
     force: Boolean(options.force),
   });
   console.log(`已安装 ${result.id} -> ${result.filePath}`);
-  console.log("宿主会在下一次任务加载对应 Skill；团队 Skill 已内嵌成员职责和协作顺序。" );
+  console.log("宿主会在下一次任务加载对应 Skill；团队 Skill 已内嵌成员实际提示词、调度协议和协作顺序。" );
 }
 
 main().catch((error) => {

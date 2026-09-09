@@ -6,3 +6,9 @@ coverage/
 !.env.example
 *.log
 .DS_Store
+
+# Local runtime artifacts
+session-*.jsonl
+
+# Local desktop-app debugging screenshots
+deepseekdesk-*.png

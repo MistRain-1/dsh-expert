@@ -45,6 +45,14 @@ export function validateTeamManifest(manifest: TeamManifest): void {
     throw new Error("专家团至少需要一个成员和一个步骤");
   }
 
+  if (manifest.spec.discovery !== undefined) {
+    if (typeof manifest.spec.discovery.enabled !== "boolean") {
+      throw new Error("spec.discovery.enabled 必须是布尔值");
+    }
+    requireTextList(manifest.spec.discovery.includePrefixes ?? [], "spec.discovery.includePrefixes");
+    requireTextList(manifest.spec.discovery.excludePrefixes ?? [], "spec.discovery.excludePrefixes");
+  }
+
   const memberIds = new Set<string>();
   for (const member of manifest.spec.members) {
     requireText(member.id, "spec.members[].id");

@@ -26,7 +26,7 @@ Expert Market 把“单个能完成一类工作的专家”与“多个专家按
 - `skills/expert-market-safety/SKILL.md`：上传内容与宿主执行器隔离的通用经验。
 - `skills/expert-authoring/SKILL.md`：把公开 GitHub Skill/Agent 转成 `expert/v1` 的制作流程、提示词模板和验收门禁。
 - `docs/github-skill-adaptations.md`：首批适配专家的 GitHub 来源、固定 commit、许可证和适配边界。
-- `apps/market/src/catalogue.js`：36 个专业专家提示词、4 个专家团和来源审计记录，其中包含 12 个 Unity 专家和 2 个 Unity 专家团。
+- `apps/market/src/catalogue.js`：111 个专业专家提示词、14 个专家团和来源审计记录，其中包含 12 个 Unity 专家、2 个 Unity 专家团、1 个通用专家团和 9 个领域协作专家团。
 - `examples/`：可直接复制的专家和专家团 manifest 示例。
 - `packages/core/src/host-exporter.ts` 与 `apps/market/scripts/install.mjs`：把专家或专家团编译并安装为 Codex、DSH、Claude Code 可读取的 `SKILL.md`。
 
@@ -43,7 +43,7 @@ pnpm dev
 
 在工作台的搜索来源中切换到 `GitHub Topic`，输入例如 `agent-skills` 后提交。结果直接来自 GitHub，产品只做展示和跳转，不会下载或执行陌生仓库代码。未登录 GitHub 的公共 API 有请求额度限制；如果需要更高额度，应在后端代理并使用安全的 OAuth 或 GitHub App 认证，不要把个人 Token 写进前端。
 
-本地目录已经加入 24 个通用专家和 12 个 Unity 专家：证据研究、架构、测试、安全、交付、代码维护、前端和 Unity 项目架构、Gameplay、Editor、数据、资产、物理/导航、性能、UI、QA、游戏设计、制作和构建发布。它们参考了许可证清晰的公开 GitHub Skill/Agent，但提示词由本项目重新编写，不等于直接安装来源仓库。每个适配条目在详情面板中显示来源文件、固定 commit 和许可证。
+本地目录现有 **111 位专家**：最初的 24 个通用专家（证据研究、架构、测试、安全、交付、规划、文档、前端、Git、性能等）、**12 个 Unity 专家**，以及适配自另外六个 MIT Skill 来源仓库的 **75 个扩充专家**——后端/API/数据库/数据管线，云/Kubernetes/IaC/网络，事故响应与日志取证，移动端/设计系统/可访问性，LLM 应用/提示词/向量检索/MLOps，商业分析/增长内容/SEO，技术翻译/图解/幻灯片，科学方法论/统计/同行评议，以及**含硬盘空间优化的电脑疑难杂症专家**。目录另外提供一个通用专家团：它会在每次任务开始时只读扫描 DSH 全局及项目级已安装 Skill，识别全部单专家，按任务相关性与风险选择最少但足够的组合，最后统一集成结果。示例专家团覆盖全栈交付、前端开发（UI 设计师+设计系统）、数据平台、事故响应、AI 产品实验室、增长内容、科学评审、平台迁移和电脑急救。它们参考了许可证清晰的公开 GitHub Skill/Agent，但提示词由本项目重新编写，不等于直接安装来源仓库。每个适配条目在详情面板中显示来源文件、固定 commit 和许可证。
 
 ```bash
 pnpm test
@@ -59,13 +59,16 @@ pnpm expert:install -- --host codex --id team.unity-development
 # 安装 Unity 整体制作专家团到 DSH 全局 Skills
 pnpm expert:install -- --host dsh --id team.unity-game-production --scope global
 
+# 安装通用按需专家团到 DSH 全局 Skills
+pnpm expert:install -- --host dsh --id team.general-expert-team --scope global
+
 # 安装单个 Unity 专家到 Claude Code 项目目录
 pnpm expert:install -- --host claude-code --id expert.unity-project-architect
 ```
 
 安装器支持 `codex`、`dsh`、`claude-code` 三个宿主。项目级默认写入当前项目的 `.codex/skills`、`.dsh/skills` 或 `.claude/skills`；`--scope global` 写入用户主目录对应位置；`--dest` 可显式指定 Skill 根目录。已有同名 `SKILL.md` 默认拒绝覆盖，更新时必须显式加 `--force`。浏览器市场只复制命令，不会静默修改本地文件。
 
-`team.unity-development` 面向具体开发任务，候选角色包括架构、Gameplay、Editor、数据、资产、物理/导航、性能和 QA；每次任务由统筹 Agent 判断实际需要哪些角色，最后由集成角色收口。`team.unity-game-production` 面向从创意到发布的整体制作，候选角色包括制作统筹、游戏设计、技术架构、内容资产、性能、QA 和构建发布。团队 Skill 会把成员提示词和统筹协议内嵌到一个 `SKILL.md`，因此 Codex、DSH、Claude Code 可以按同一套 JSON 协议协作；`@expert/core` 的 `TeamRunner` 在宿主提供 `TeamCoordinator` 与 `ExpertExecutor` 时，会校验调度决定、按轮次并行调用，并记录实际调用与跳过结果。
+`team.general-expert-team` 是跨领域通用入口：每次任务先自动发现 DSH 全局目录和当前项目目录中所有已安装的单专家 Skill；项目级同名专家覆盖全局版本。统筹 Agent 根据原始需求、候选能力、相关性和风险只调用最少但足够的专家；如果发现失败，则明确报告缺口并回退到内嵌候选，最后统一集成。发现阶段只读元数据，不执行陌生 Skill 内容，也不会扩大 DSH 权限。`team.unity-development` 面向具体开发任务，候选角色包括架构、Gameplay、Editor、数据、资产、物理/导航、性能和 QA；每次任务由统筹 Agent 判断实际需要哪些角色，最后由集成角色收口。`team.unity-game-production` 面向从创意到发布的整体制作，候选角色包括制作统筹、游戏设计、技术架构、内容资产、性能、QA 和构建发布。团队 Skill 会把每个成员的实际提示词载荷和统筹协议内嵌到一个 `SKILL.md`；宿主每次调用都必须连同原始任务、子任务、上游结果和 locale 注入该载荷，因此 Codex、DSH、Claude Code 可以按同一套 JSON 协议协作；`@expert/core` 的 `TeamRunner` 在宿主提供 `TeamCoordinator` 与 `ExpertExecutor` 时，会校验调度决定、按轮次并行调用，并记录实际调用与跳过结果。
 
 > 注意：团队的 `steps` 不是“每次都必须执行的清单”，而是统筹 Agent 可以选择的候选图和安全边界：`dependsOn` 只约束尚未收口的前置步骤，不能被统筹 Agent 越权绕过；跳过的成员不产生结果，下游如果仍可工作，必须显式处理缺口。没有提供统筹 Agent 时，运行器保留旧的全量依赖执行兼容行为。
 

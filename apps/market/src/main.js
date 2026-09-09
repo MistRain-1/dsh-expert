@@ -2,6 +2,9 @@ import { catalogue as initialCatalogue, createExpert as expert, createTeam as te
 
 const root = document.querySelector("#root");
 let catalogue = initialCatalogue;
+let installedSkills = [];
+const supportedHosts = ["codex", "dsh", "claude-code"];
+const hostLabels = { codex: "Codex", dsh: "DSH", "claude-code": "Claude Code" };
 
 const state = {
   section: "market",
@@ -13,10 +16,12 @@ const state = {
   githubMessage: "",
   githubResults: [],
   githubSelectedId: "",
-  selectedId: "team.product-brief",
+  selectedId: "team.general-expert-team",
   modal: null,
-  installHost: "codex",
+  installHost: "dsh",
   installCopied: false,
+  installStatus: "loading",
+  installMessage: "",
   events: [],
   runState: "idle",
   lastResult: "",
@@ -28,6 +33,31 @@ function isTeam(value) { return value.kind === "team"; }
 function escapeHtml(value) { return String(value).replace(/[&<>\"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[character])); }
 function icon(symbol, label = "") { return `<span aria-hidden="true" class="symbol">${symbol}</span>${label ? `<span>${label}</span>` : ""}`; }
 function sourceUrl(record) { return record ? `https://github.com/${record.repository}/blob/${record.commit}/${record.path}` : ""; }
+function skillNameForId(id) { return id.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+function isInstalled(manifest, host = state.installHost) {
+  const skillName = skillNameForId(manifest?.metadata?.id ?? "");
+  return Boolean(skillName) && installedSkills.some((skill) => skill.host === host && (skill.name === skillName || skill.directory === skillName));
+}
+function installedHosts(manifest) { return supportedHosts.filter((host) => isInstalled(manifest, host)); }
+function hostLabel(host) { return hostLabels[host] ?? host; }
+
+async function loadInstalledSkills() {
+  try {
+    const response = await fetch("/api/installed-skills", { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    installedSkills = Array.isArray(payload.skills) ? payload.skills : [];
+  } catch {
+    installedSkills = [];
+    state.installStatus = "error";
+    state.installMessage = "无法读取本机 Skill 目录";
+    render();
+    return;
+  }
+  state.installStatus = "ready";
+  state.installMessage = "";
+  render();
+}
 
 function normalizeTopic(value) {
   return value.trim().replace(/^topic:/i, "").replace(/^#/, "").trim().toLowerCase().replace(/\s+/g, "-");
@@ -144,13 +174,14 @@ function render() {
   const githubSelected = state.githubResults.find((repository) => repository.id === state.githubSelectedId);
   const isGithubSearch = state.searchMode === "github-topic";
   const counts = { all: catalogue.length, expert: catalogue.filter((entry) => entry.kind === "expert").length, team: catalogue.filter((entry) => entry.kind === "team").length };
+  const installedCount = state.installStatus === "ready" ? catalogue.filter((entry) => isInstalled(entry.manifest, "dsh")).length : "-";
   root.innerHTML = `<div class="app-shell">
     <aside class="sidebar">
       <div class="brand-lockup"><div class="brand-mark"><span>EX</span></div><div><strong>EXPERT</strong><small>OPEN MARKET</small></div></div>
       <div class="workspace-switcher"><span class="workspace-dot"></span><div><small>当前工作区</small><strong>atlas-lab</strong></div><span>›</span></div>
       <nav class="primary-nav" aria-label="主导航"><button class="nav-button ${state.section === "market" ? "active" : ""}" data-action="market">${icon("⊞", "专家市场")}${state.section === "market" ? "<i></i>" : ""}</button><button class="nav-button ${state.section === "workspace" ? "active" : ""}" data-action="workspace">${icon("◌", "我的工作台")}${state.section === "workspace" ? "<i></i>" : ""}</button><button class="nav-button ${state.section === "teams" ? "active" : ""}" data-action="teams">${icon("⌘", "专家团")}${state.section === "teams" ? "<i></i>" : ""}</button></nav>
       <div class="side-divider"></div><div class="side-label">收藏与管理</div>
-      <button class="side-link">${icon("⌁", "我的发布")}<span>3</span></button><button class="side-link">${icon("✓", "审核队列")}<span>8</span></button><button class="side-link">${icon("□", "已安装")}<span>12</span></button>
+      <button class="side-link">${icon("⌁", "我的发布")}<span>3</span></button><button class="side-link">${icon("✓", "审核队列")}<span>8</span></button><button class="side-link">${icon("□", "已安装")}<span>${installedCount}</span></button>
       <div class="sidebar-footer"><div class="sync-status"><span></span> Registry 已同步</div><div class="user-row"><div class="avatar">AL</div><div><strong>Atlas Lab</strong><small>开源维护者</small></div><span>•••</span></div></div>
     </aside>
     <main class="main-area"><header class="topbar"><div class="breadcrumb"><span>WORKSPACE</span><span>›</span><strong>${state.section === "teams" ? "专家团" : state.section === "workspace" ? "我的工作台" : "专家市场"}</strong></div><div class="top-actions"><button class="icon-button" aria-label="活动记录">◷</button><div class="notification-dot"></div><button class="avatar avatar-small">AL</button></div></header>
@@ -164,18 +195,24 @@ function render() {
 function card(entry) {
   const manifest = entry.manifest; const teamEntry = isTeam(entry); const selected = manifest.metadata.id === state.selectedId;
   const members = teamEntry ? manifest.spec.members : [];
-  return `<button class="catalog-card ${selected ? "selected" : ""}" data-select="${escapeHtml(manifest.metadata.id)}"><div class="card-topline"><div class="type-icon ${entry.accent}">${teamEntry ? "⌘" : "◉"}</div><span class="type-label">${teamEntry ? "专家团" : "专家"}</span>${entry.verified ? "✓" : ""}<span class="card-more">•••</span></div><h3>${escapeHtml(manifest.metadata.name)}</h3><p>${escapeHtml(manifest.metadata.description)}</p><div class="tag-row">${manifest.metadata.tags.slice(0, 3).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>${teamEntry ? `<div class="member-stack">${members.slice(0, 4).map((member, index) => `<span class="mini-avatar mini-${index}">${escapeHtml(member.role.slice(0, 1))}</span>`).join("")}<small>${members.length} 位专家协作</small></div>` : ""}<div class="card-footer"><span>♧ ${entry.installs}</span><span><span class="star">★</span> ${entry.rating}</span><span class="version">v${manifest.metadata.version}</span></div></button>`;
+  const installed = state.installStatus === "ready" && isInstalled(manifest, "dsh");
+  return `<button class="catalog-card ${selected ? "selected" : ""} ${installed ? "is-installed" : ""}" data-select="${escapeHtml(manifest.metadata.id)}"><div class="card-topline"><div class="type-icon ${entry.accent}">${teamEntry ? "⌘" : "◉"}</div><span class="type-label">${teamEntry ? "专家团" : "专家"}</span>${entry.verified ? `<span class="verified-badge" aria-label="已审核">✓ 已审核</span>` : ""}${installed ? `<span class="card-installed"><span>✓</span> 已安装</span>` : ""}<span class="card-more">•••</span></div><h3>${escapeHtml(manifest.metadata.name)}</h3><p>${escapeHtml(manifest.metadata.description)}</p><div class="tag-row">${manifest.metadata.tags.slice(0, 3).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>${teamEntry ? `<div class="member-stack">${members.slice(0, 4).map((member, index) => `<span class="mini-avatar mini-${index}">${escapeHtml(member.role.slice(0, 1))}</span>`).join("")}<small>${members.length} 位专家协作</small></div>` : ""}<div class="card-footer"><span>♧ ${entry.installs}</span><span><span class="star">★</span> ${entry.rating}</span><span class="version">v${manifest.metadata.version}</span></div></button>`;
 }
 
 function inspector(entry) {
   const manifest = entry.manifest; const teamEntry = isTeam(entry); const ready = teamEntry && manifest.spec.members.length > 0 && manifest.spec.steps.length > 0;
   const sourceRecord = entry.source;
   const sourceBlock = sourceRecord ? `<div class="source-block"><small>提示词来源</small><a href="${escapeHtml(sourceUrl(sourceRecord))}" target="_blank" rel="noreferrer">${escapeHtml(sourceRecord.repository)} / ${escapeHtml(sourceRecord.path)} ↗</a><span>固定 commit ${escapeHtml(sourceRecord.commit.slice(0, 8))} · ${escapeHtml(sourceRecord.license)}</span></div>` : "";
-  return `<aside class="inspector"><div class="inspector-header"><span>详细信息</span><button class="icon-button">•••</button></div><div class="inspector-identity"><div class="detail-icon ${entry.accent}">${teamEntry ? "⌘" : "◉"}</div><div><h2>${escapeHtml(manifest.metadata.name)}</h2><div class="identity-meta">${teamEntry ? "专家团" : "专家"} · ${escapeHtml(manifest.metadata.author)}</div></div></div><p class="detail-description">${escapeHtml(manifest.metadata.description)}</p><div class="detail-tags">${manifest.metadata.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>${sourceBlock}${teamEntry ? teamFlow(manifest) : capabilityList(manifest)}${installAction(manifest)}${teamEntry ? runPanel(manifest, ready) : ""}<div class="inspector-bottom"><div><small>发布版本</small><strong>v${manifest.metadata.version}</strong></div><div><small>许可证</small><strong>${escapeHtml(sourceRecord?.license ?? "本地")}</strong></div><div><small>状态</small><strong class="status-live"><span></span> 可用</strong></div></div></aside>`;
+  return `<aside class="inspector"><div class="inspector-header"><span>详细信息</span><button class="icon-button" aria-label="更多信息">•••</button></div><div class="inspector-identity"><div class="detail-icon ${entry.accent}">${teamEntry ? "⌘" : "◉"}</div><div><h2>${escapeHtml(manifest.metadata.name)}</h2><div class="identity-meta">${teamEntry ? "专家团" : "专家"} · ${escapeHtml(manifest.metadata.author)}</div></div></div><p class="detail-description">${escapeHtml(manifest.metadata.description)}</p><div class="detail-tags">${manifest.metadata.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>${sourceBlock}${teamEntry ? teamFlow(manifest) : capabilityList(manifest)}${installAction(manifest)}${teamEntry ? runPanel(manifest, ready) : ""}<div class="inspector-bottom"><div><small>发布版本</small><strong>v${manifest.metadata.version}</strong></div><div><small>许可证</small><strong>${escapeHtml(sourceRecord?.license ?? "本地")}</strong></div><div><small>状态</small><strong class="status-live"><span></span> 可用</strong></div></div></aside>`;
 }
 
 function installAction(manifest) {
-  return `<div class="install-panel"><div class="section-title"><span>安装到 Agent</span><small>CLI</small></div><p>浏览器不会直接写入文件。复制命令后，在项目根目录运行即可生成宿主可识别的 SKILL.md。</p><button class="button button-primary full-button" data-action="install">⇩ 选择宿主并安装</button></div>`;
+  const installed = state.installStatus === "ready" && isInstalled(manifest);
+  const allHostsInstalled = state.installStatus === "ready" && installedHosts(manifest).length === supportedHosts.length;
+  if (state.installStatus === "loading") return `<div class="install-panel"><div class="section-title"><span>安装到 Agent</span><small>CHECKING</small></div><p>正在读取本机宿主目录的安装状态。</p><button class="button button-secondary full-button" disabled>◌ 检查安装状态…</button></div>`;
+  if (installed) return `<div class="install-panel is-installed"><div class="section-title"><span>已安装到 ${hostLabel(state.installHost)}</span><small>READY</small></div><p>这个 Skill 已经在当前宿主目录中，可以直接使用；重复安装已关闭。</p><div class="installed-state"><span class="installed-check">✓</span><div><strong>本机已发现</strong><small>${escapeHtml(skillNameForId(manifest.metadata.id))} · ${escapeHtml(hostLabel(state.installHost))}</small></div></div>${allHostsInstalled ? "" : `<button class="button button-secondary full-button" data-action="install-other">选择其他宿主</button>`}</div>`;
+  if (state.installStatus === "error") return `<div class="install-panel"><div class="section-title"><span>安装到 Agent</span><small>UNVERIFIED</small></div><p>无法读取本机安装目录；请先在目标宿主确认是否已有同名 Skill。</p><button class="button button-primary full-button" data-action="install">⇩ 选择宿主并安装</button></div>`;
+  return `<div class="install-panel"><div class="section-title"><span>安装到 ${hostLabel(state.installHost)}</span><small>CLI</small></div><p>浏览器不会直接写入文件。复制命令后，在项目根目录运行即可生成宿主可识别的 SKILL.md。</p><button class="button button-primary full-button" data-action="install">⇩ 选择宿主并安装</button></div>`;
 }
 
 function teamFlow(manifest) {
@@ -193,9 +230,11 @@ function runPanel(manifest, ready) {
 function installModal() {
   const entry = catalogue.find((candidate) => candidate.manifest.metadata.id === state.selectedId);
   if (!entry) return "";
+  const installed = isInstalled(entry.manifest, state.installHost);
   const id = entry.manifest.metadata.id;
   const command = `pnpm expert:install -- --host ${state.installHost} --id ${id}`;
-  return `<div class="modal-backdrop" data-action="close-modal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-heading"><div><div class="eyebrow">HOST INSTALL</div><h2 id="modal-title">安装 ${escapeHtml(entry.manifest.metadata.name)}</h2><p>选择目标宿主，复制命令后在 Expert Market 项目根目录运行。不会自动覆盖已有 Skill。</p></div><button class="icon-button" data-action="close-modal">×</button></div><div class="form-stack"><label>目标 Agent<select id="install-host"><option value="codex" ${state.installHost === "codex" ? "selected" : ""}>Codex</option><option value="dsh" ${state.installHost === "dsh" ? "selected" : ""}>DSH</option><option value="claude-code" ${state.installHost === "claude-code" ? "selected" : ""}>Claude Code</option></select></label><div class="install-command"><small>项目级安装命令</small><code>${escapeHtml(command)}</code></div><div class="upload-note">✓ <span>专家团会生成一个自包含 SKILL.md；成员提示词、动态统筹协议、候选依赖边界和安全边界都会写入文件。</span></div><div class="modal-actions"><button class="button button-secondary" data-action="close-modal">取消</button><button class="button button-primary" data-action="copy-install-command">${state.installCopied ? "已复制" : "复制命令"}</button></div></div></div></div>`;
+  const options = supportedHosts.map((host) => `<option value="${host}" ${state.installHost === host ? "selected" : ""} ${isInstalled(entry.manifest, host) ? "disabled" : ""}>${hostLabel(host)}${isInstalled(entry.manifest, host) ? " · 已安装" : ""}</option>`).join("");
+  return `<div class="modal-backdrop" data-action="close-modal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-heading"><div><div class="eyebrow">HOST INSTALL</div><h2 id="modal-title">安装 ${escapeHtml(entry.manifest.metadata.name)}</h2><p>选择尚未安装的目标宿主，复制命令后在 Expert Market 项目根目录运行。已有 Skill 不会重复覆盖。</p></div><button class="icon-button" aria-label="关闭" data-action="close-modal">×</button></div><div class="form-stack"><label>目标 Agent<select id="install-host">${options}</select></label>${installed ? `<div class="installed-state modal-installed"><span class="installed-check">✓</span><div><strong>${hostLabel(state.installHost)} 已安装</strong><small>请选择其他未安装宿主</small></div></div>` : `<div class="install-command"><small>项目级安装命令</small><code>${escapeHtml(command)}</code></div>`}<div class="upload-note">✓ <span>专家团会生成一个自包含 SKILL.md；成员提示词、动态统筹协议、候选依赖边界和安全边界都会写入文件。</span></div><div class="modal-actions"><button class="button button-secondary" data-action="close-modal">取消</button><button class="button button-primary" data-action="copy-install-command" ${installed ? "disabled" : ""}>${state.installCopied ? "已复制" : installed ? "已安装" : "复制命令"}</button></div></div></div></div>`;
 }
 
 function modal() {
@@ -243,7 +282,7 @@ document.addEventListener("click", (event) => {
   if (action === "workspace") { state.section = "workspace"; state.searchMode = "local"; }
   if (action === "teams") { state.section = "teams"; state.kind = "team"; state.searchMode = "local"; }
   if (action === "publish" || action === "create-team") state.modal = action === "publish" ? "publish" : "team";
-  if (action === "install") { state.modal = "install"; state.installCopied = false; }
+  if (action === "install" || action === "install-other") { const selectedManifest = catalogue.find((candidate) => candidate.manifest.metadata.id === state.selectedId)?.manifest; if (!selectedManifest || (action === "install" && state.installStatus === "ready" && isInstalled(selectedManifest))) return; state.modal = "install"; state.installCopied = false; }
   if (action === "close-modal") state.modal = null;
   if (action === "retry-github") { searchGithubTopic(); return; }
   if (action === "run") { runSelected(); return; }
@@ -262,7 +301,7 @@ document.addEventListener("submit", (event) => {
 
 async function copyInstallCommand() {
   const entry = catalogue.find((candidate) => candidate.manifest.metadata.id === state.selectedId);
-  if (!entry) return;
+  if (!entry || state.installStatus !== "ready" || isInstalled(entry.manifest)) return;
   const command = `pnpm expert:install -- --host ${state.installHost} --id ${entry.manifest.metadata.id}`;
   try {
     await navigator.clipboard.writeText(command);
@@ -294,3 +333,4 @@ document.addEventListener("input", (event) => {
   input.setSelectionRange(input.value.length, input.value.length);
 });
 render();
+loadInstalledSkills();

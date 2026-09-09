@@ -29,6 +29,15 @@ export interface TeamStep {
   dependsOn?: string[];
 }
 
+/** 可选的宿主侧 Skill 发现策略；发现和执行权限仍由宿主控制。 */
+export interface TeamDiscoveryConfig {
+  enabled: boolean;
+  /** 允许纳入候选的 Skill 目录名前缀；默认由宿主决定。 */
+  includePrefixes?: string[];
+  /** 明确排除的 Skill 目录名前缀，例如避免递归调用其他团队。 */
+  excludePrefixes?: string[];
+}
+
 /** 专家团定义；steps 声明候选分支，最后一个步骤默认为最终集成输出。 */
 export interface TeamManifest {
   apiVersion: "expert/v1";
@@ -44,6 +53,7 @@ export interface TeamManifest {
   spec: {
     members: TeamMember[];
     steps: TeamStep[];
+    discovery?: TeamDiscoveryConfig;
   };
 }
 
