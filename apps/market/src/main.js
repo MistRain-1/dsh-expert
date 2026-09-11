@@ -216,6 +216,9 @@ function installAction(manifest) {
 }
 
 function teamFlow(manifest) {
+  if (manifest.spec.discovery?.enabled) {
+    return `<div class="team-flow"><div class="section-title"><span>候选调度边界</span><small>动态发现</small></div><div class="flow-step"><div class="flow-index">◌</div><div class="flow-copy"><strong>按需调用已安装专家</strong><span>不预置成员覆盖 · 由统筹 Agent 在运行时按任务自动选择</span></div></div></div>`;
+  }
   const finalMember = manifest.spec.steps.at(-1)?.member;
   return `<div class="team-flow"><div class="section-title"><span>候选调度边界</span><small>${manifest.spec.members.length} 位成员</small></div>${manifest.spec.steps.map((step, index) => { const member = manifest.spec.members.find((candidate) => candidate.id === step.member); const dependencyText = step.dependsOn?.length ? `前置：${step.dependsOn.join("、")}` : "首轮候选"; const finalText = step.member === finalMember ? " · 最终集成" : ""; return `<div class="flow-step"><div class="flow-index">0${index + 1}</div><div class="flow-copy"><strong>${escapeHtml(member?.role ?? step.member)}</strong><span>${escapeHtml(member?.expertName ?? member?.expert ?? "待配置")} · ${escapeHtml(dependencyText)}${finalText}</span></div>${index < manifest.spec.steps.length - 1 ? "›" : ""}</div>`; }).join("")}</div>`;
 }
@@ -224,6 +227,9 @@ function capabilityList(manifest) { return `<div class="capability-list"><div cl
 
 function runPanel(manifest, ready) {
   const eventLines = state.events.map((event) => { const label = event.type === "step_started" ? "候选步骤开始" : event.type === "step_completed" ? "依赖检查完成" : event.type === "step_skipped" ? "候选步骤跳过" : "依赖检查失败"; return `<div class="event-line ${event.type}"><span class="event-dot"></span><div><strong>${escapeHtml(event.role)}</strong><span>${label}</span></div></div>`; }).join("");
+  if (manifest.spec.discovery?.enabled) {
+    return `<div class="run-panel"><div class="section-title"><span>依赖边界预览</span><small class="success-text">动态</small></div><p>成员与调用顺序由宿主在运行时自动发现已安装专家后决定；本团队不预置成员覆盖，因此没有可预览的静态依赖图。</p></div>`;
+  }
   return `<div class="run-panel"><div class="section-title"><span>依赖边界预览</span>${state.runState === "done" ? "<small class=\"success-text\">预览完成</small>" : ""}</div>${!ready ? "<p>这个专家团还没有成员或步骤，请先从市场添加专家并配置候选边界。</p>" : state.events.length === 0 && state.runState === "idle" ? "<p>这里只检查声明的依赖层，不调用统筹模型、专家、Unity 或宿主工具；真实运行由宿主统筹 Agent 决定按需调用。</p>" : `<div class="event-stream">${eventLines}</div>`}${state.lastResult ? `<div class="run-result"><small>预览结果</small><span>${escapeHtml(state.lastResult)}</span></div>` : ""}<button class="button button-primary full-button" data-action="run" ${!ready || state.runState === "running" ? "disabled" : ""}>▶ ${state.runState === "running" ? "预览中…" : "预览候选依赖"}</button>${state.runState === "error" ? "<small class=\"error-text\">预览失败，请检查成员依赖。</small>" : ""}</div>`;
 }
 

@@ -68,7 +68,7 @@ pnpm expert:install -- --host claude-code --id expert.unity-project-architect
 
 安装器支持 `codex`、`dsh`、`claude-code` 三个宿主。项目级默认写入当前项目的 `.codex/skills`、`.dsh/skills` 或 `.claude/skills`；`--scope global` 写入用户主目录对应位置；`--dest` 可显式指定 Skill 根目录。已有同名 `SKILL.md` 默认拒绝覆盖，更新时必须显式加 `--force`。浏览器市场只复制命令，不会静默修改本地文件。
 
-`team.general-expert-team` 是跨领域通用入口：每次任务先自动发现 DSH 全局目录和当前项目目录中所有已安装的单专家 Skill；项目级同名专家覆盖全局版本。统筹 Agent 根据原始需求、候选能力、相关性和风险只调用最少但足够的专家；如果发现失败，则明确报告缺口并回退到内嵌候选，最后统一集成。发现阶段只读元数据，不执行陌生 Skill 内容，也不会扩大 DSH 权限。`team.unity-development` 面向具体开发任务，候选角色包括架构、Gameplay、Editor、数据、资产、物理/导航、性能和 QA；每次任务由统筹 Agent 判断实际需要哪些角色，最后由集成角色收口。`team.unity-game-production` 面向从创意到发布的整体制作，候选角色包括制作统筹、游戏设计、技术架构、内容资产、性能、QA 和构建发布。团队 Skill 会把每个成员的实际提示词载荷和统筹协议内嵌到一个 `SKILL.md`；宿主每次调用都必须连同原始任务、子任务、上游结果和 locale 注入该载荷，因此 Codex、DSH、Claude Code 可以按同一套 JSON 协议协作；`@expert/core` 的 `TeamRunner` 在宿主提供 `TeamCoordinator` 与 `ExpertExecutor` 时，会校验调度决定、按轮次并行调用，并记录实际调用与跳过结果。
+`team.general-expert-team` 是跨领域通用入口：每次任务先自动发现 DSH 全局目录和当前项目目录中所有已安装的单专家 Skill；项目级同名专家覆盖全局版本。本团队不预置成员覆盖，成员图由统筹 Agent 在运行时按实际已安装专家构建，根据原始需求、候选能力、相关性和风险只调用最少但足够的专家；如果发现失败，则明确报告缺口，最后统一集成。发现阶段只读元数据，不执行陌生 Skill 内容，也不会扩大 DSH 权限。`team.unity-development` 面向具体开发任务，候选角色包括架构、Gameplay、Editor、数据、资产、物理/导航、性能和 QA；每次任务由统筹 Agent 判断实际需要哪些角色，最后由集成角色收口。`team.unity-game-production` 面向从创意到发布的整体制作，候选角色包括制作统筹、游戏设计、技术架构、内容资产、性能、QA 和构建发布。团队 Skill 会把每个成员的实际提示词载荷和统筹协议内嵌到一个 `SKILL.md`；宿主每次调用都必须连同原始任务、子任务、上游结果和 locale 注入该载荷，因此 Codex、DSH、Claude Code 可以按同一套 JSON 协议协作；`@expert/core` 的 `TeamRunner` 在宿主提供 `TeamCoordinator` 与 `ExpertExecutor` 时，会校验调度决定、按轮次并行调用，并记录实际调用与跳过结果。
 
 > 注意：团队的 `steps` 不是“每次都必须执行的清单”，而是统筹 Agent 可以选择的候选图和安全边界：`dependsOn` 只约束尚未收口的前置步骤，不能被统筹 Agent 越权绕过；跳过的成员不产生结果，下游如果仍可工作，必须显式处理缺口。没有提供统筹 Agent 时，运行器保留旧的全量依赖执行兼容行为。
 

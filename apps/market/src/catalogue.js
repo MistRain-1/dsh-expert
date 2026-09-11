@@ -2941,50 +2941,8 @@ const expansionData = {
   ]
 };
 
-// 通用入口：保持与其他专家团相同的可读名称、成员图和内嵌提示词；宿主另行补充运行时发现的动态候选。
-const generalExpertTeam = createTeam("team.general-expert-team", "通用专家团", "自动发现并按需调用已安装专家，协作完成跨领域任务。", "Expert Market", [
-  ["triage", "Context Curator", "任务分诊", manifests.context.metadata.id],
-  ["requirements", "Requirements Interviewer", "需求澄清", "expert.requirements-interviewer"],
-  ["research", "Evidence Researcher", "证据研究", manifests.research.metadata.id],
-  ["architect", "System Architect", "系统架构", manifests.architect.metadata.id],
-  ["backend", "Backend API Architect", "后端接口", "expert.backend-api-architect"],
-  ["frontend", "Frontend UI Engineer", "前端界面", manifests.frontend.metadata.id],
-  ["data", "Database Modeling Specialist", "数据建模", "expert.database-modeling-specialist"],
-  ["ai", "LLM Application Engineer", "AI 应用", "expert.llm-application-engineer"],
-  ["mobile", "Mobile App Engineer", "移动端", "expert.mobile-app-engineer"],
-  ["game", "Unity Project Architect", "游戏开发", manifests.unityArchitect.metadata.id],
-  ["cloud", "Cloud Landing Zone Advisor", "云与基础设施", "expert.cloud-landing-zone-advisor"],
-  ["design", "UI Visual Designer", "视觉设计", "expert.ui-visual-designer"],
-  ["security", "Security Auditor", "安全审查", manifests.security.metadata.id],
-  ["testing", "Test Strategist", "测试策略", manifests.tester.metadata.id],
-  ["browser", "Browser QA", "浏览器验收", manifests.browser.metadata.id],
-  ["performance", "Performance Optimizer", "性能优化", manifests.performance.metadata.id],
-  ["documentation", "Documentation & ADR", "文档与决策记录", manifests.documentation.metadata.id],
-  ["migration", "Migration Steward", "迁移兼容", manifests.migration.metadata.id],
-  ["release", "Launch Guardian", "发布保障", manifests.shipping.metadata.id],
-  ["integrator", "Decision Editor", "最终集成", manifests.editor.metadata.id],
-], [
-  ["triage"],
-  ["requirements", "triage"],
-  ["research", "triage"],
-  ["architect", "requirements"],
-  ["backend", "architect"],
-  ["frontend", "architect"],
-  ["data", "architect"],
-  ["ai", "architect"],
-  ["mobile", "architect"],
-  ["game", "architect"],
-  ["cloud", "architect"],
-  ["design", "requirements"],
-  ["security", "architect"],
-  ["testing", "architect"],
-  ["browser", "frontend"],
-  ["performance", "architect"],
-  ["documentation", "architect"],
-  ["migration", "architect"],
-  ["release", "testing"],
-  ["integrator", "triage", "requirements", "research", "architect", "backend", "frontend", "data", "ai", "mobile", "game", "cloud", "design", "security", "testing", "browser", "performance", "documentation", "migration", "release"],
-]);
+// 通用入口：不预置成员覆盖；成员与协作步骤由宿主在运行时按已安装专家自动发现与编排。
+const generalExpertTeam = createTeam("team.general-expert-team", "通用专家团", "自动发现并按需调用已安装专家，协作完成跨领域任务。", "Expert Market", [], []);
 generalExpertTeam.spec.discovery = {
   enabled: true,
   excludePrefixes: ["team-"],

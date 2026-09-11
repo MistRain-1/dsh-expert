@@ -1,0 +1,25 @@
+{
+  "apiVersion": "expert/v1",
+  "kind": "team",
+  "metadata": {
+    "id": "team.general-expert-team",
+    "name": "通用专家团",
+    "version": "1.0.0",
+    "description": "自动发现并按需调用已安装专家，协作完成跨领域任务。",
+    "author": "Expert Market",
+    "tags": [
+      "协作",
+      "工作流"
+    ]
+  },
+  "spec": {
+    "members": [],
+    "steps": [],
+    "discovery": {
+      "enabled": true,
+      "excludePrefixes": [
+        "team-"
+      ]
+    }
+  }
+}
